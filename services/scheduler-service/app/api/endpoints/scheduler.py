@@ -17,6 +17,7 @@ from app.schemas.scheduler import (
     ScheduleGenerationSummary,
     ResponseModel
 )
+from app.schemas.queue import QueueStatus
 from app.services.scheduler_service import scheduler_service
 from app.core.errors import ServiceException, http_exception_from_service_error
 
@@ -84,6 +85,20 @@ async def list_schedule_generations(
         )
     except ServiceException as e:
         raise http_exception_from_service_error(e)
+
+
+@router.get("/queue/status", response_model=ResponseModel[QueueStatus])
+async def get_queue_status(
+    current_user: CurrentUser = Depends(get_current_user),
+):
+    """
+    Get the status of the scheduling queue
+    """
+    queue_status = await scheduler_service.get_queue_status()
+    return ResponseModel(
+        data=QueueStatus(**queue_status),
+        message="Queue status retrieved successfully"
+    )
 
 
 @router.get("/generations/{generation_id}", response_model=ResponseModel[ScheduleGenerationSummary])

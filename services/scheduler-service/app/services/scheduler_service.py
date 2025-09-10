@@ -19,6 +19,7 @@ from app.schemas.scheduler import (
     SchedulingRequest,
     SchedulingJobStatus
 )
+from app.worker.worker_manager import worker_manager
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,6 @@ class SchedulerService:
     
     def __init__(self, data_service_url: str):
         self.data_service_url = data_service_url
-        self.active_jobs: Dict[UUID, SchedulingJobStatus] = {}
     
     async def create_scheduling_job(
         self, 
@@ -49,11 +49,14 @@ class SchedulerService:
             created_at=datetime.now().isoformat()
         )
         
-        self.active_jobs[job_id] = job_status
-        
-        # Start job processing in background task
-        asyncio.create_task(
-            self._process_scheduling_job(job_id, request, auth_headers)
+        # Submit job to worker manager
+        await worker_manager.submit_job(
+            job_id, 
+            job_status, 
+            self._process_scheduling_job,
+            job_id, 
+            request, 
+            auth_headers
         )
         
         return job_status
@@ -62,65 +65,73 @@ class SchedulerService:
         """
         Get the status of a scheduling job
         """
-        return self.active_jobs.get(job_id)
+        return worker_manager.get_job_status(job_id)
+        
+    async def get_queue_status(self) -> Dict[str, Any]:
+        """
+        Get the status of the job queue
+        """
+        return worker_manager.get_queue_status()
     
     async def _process_scheduling_job(
         self, 
         job_id: UUID,
         request: SchedulingRequest,
         auth_headers: Dict[str, str]
-    ):
+    ) -> Dict[str, Any]:
         """
-        Process a scheduling job (this runs in the background)
+        Process a scheduling job (this runs as a worker task)
+        
+        Returns a dict with summary information about the completed job
         """
-        try:
-            # Update job status
-            self.active_jobs[job_id].status = SchedulingStatus.RUNNING
-            self.active_jobs[job_id].started_at = datetime.now().isoformat()
-            self.active_jobs[job_id].message = "Loading data from data service"
-            self.active_jobs[job_id].progress = 10.0
-            
-            # 1. Fetch data from data service
-            data = await self._fetch_scheduling_data(request, auth_headers)
-            
-            # Update progress
-            self.active_jobs[job_id].progress = 30.0
-            self.active_jobs[job_id].message = "Running scheduling algorithm"
-            
-            # 2. Run scheduling algorithm (to be implemented)
-            schedule_generation_id, scheduling_results = await self._run_scheduling_algorithm(
-                data, request, auth_headers
-            )
-            
-            # Update progress
-            self.active_jobs[job_id].progress = 80.0
-            self.active_jobs[job_id].message = "Saving schedule to data service"
-            
-            # 3. Save results back to data service
-            await self._save_scheduling_results(schedule_generation_id, scheduling_results, auth_headers)
-            
-            # Update job status
-            self.active_jobs[job_id].status = SchedulingStatus.COMPLETED
-            self.active_jobs[job_id].completed_at = datetime.now().isoformat()
-            self.active_jobs[job_id].progress = 100.0
-            self.active_jobs[job_id].message = "Scheduling completed successfully"
-            
-            # Add summary information
-            self.active_jobs[job_id].schedule_generation_id = schedule_generation_id
-            self.active_jobs[job_id].total_sessions = len(scheduling_results["sessions"])
-            self.active_jobs[job_id].hard_constraint_violations = scheduling_results["metrics"]["hard_constraint_violations"]
-            self.active_jobs[job_id].soft_constraint_violations = scheduling_results["metrics"]["soft_constraint_violations"]
-            self.active_jobs[job_id].faculty_satisfaction_score = scheduling_results["metrics"]["faculty_satisfaction_score"]
-            self.active_jobs[job_id].batch_satisfaction_score = scheduling_results["metrics"]["batch_satisfaction_score"]
-            self.active_jobs[job_id].room_utilization = scheduling_results["metrics"]["room_utilization"]
-            
-        except Exception as e:
-            logger.exception(f"Error processing scheduling job {job_id}: {str(e)}")
-            # Update job status
-            self.active_jobs[job_id].status = SchedulingStatus.FAILED
-            self.active_jobs[job_id].completed_at = datetime.now().isoformat()
-            self.active_jobs[job_id].message = "Scheduling failed"
-            self.active_jobs[job_id].error = str(e)
+        # Get current job status
+        job_status = worker_manager.get_job_status(job_id)
+        if not job_status:
+            raise SchedulingException(f"Job {job_id} not found")
+        
+        # Update job status
+        job_status.status = SchedulingStatus.RUNNING
+        job_status.started_at = datetime.now().isoformat()
+        job_status.message = "Loading data from data service"
+        job_status.progress = 10.0
+        
+        # 1. Fetch data from data service
+        logger.info(f"Job {job_id}: Fetching data from data service")
+        data = await self._fetch_scheduling_data(request, auth_headers)
+        
+        # Update progress
+        job_status.progress = 30.0
+        job_status.message = "Running scheduling algorithm"
+        
+        # 2. Run scheduling algorithm
+        logger.info(f"Job {job_id}: Running scheduling algorithm")
+        schedule_generation_id, scheduling_results = await self._run_scheduling_algorithm(
+            data, request, auth_headers
+        )
+        
+        # Update progress
+        job_status.progress = 80.0
+        job_status.message = "Saving schedule to data service"
+        
+        # 3. Save results back to data service
+        logger.info(f"Job {job_id}: Saving results to data service")
+        await self._save_scheduling_results(schedule_generation_id, scheduling_results, auth_headers)
+        
+        # Create result summary
+        summary = {
+            "schedule_generation_id": schedule_generation_id,
+            "total_sessions": len(scheduling_results["sessions"]),
+            "hard_constraint_violations": scheduling_results["metrics"]["hard_constraint_violations"],
+            "soft_constraint_violations": scheduling_results["metrics"]["soft_constraint_violations"],
+            "faculty_satisfaction_score": scheduling_results["metrics"]["faculty_satisfaction_score"],
+            "batch_satisfaction_score": scheduling_results["metrics"]["batch_satisfaction_score"],
+            "room_utilization": scheduling_results["metrics"]["room_utilization"]
+        }
+        
+        # Log completion
+        logger.info(f"Job {job_id}: Completed successfully")
+        
+        return summary
     
     async def _fetch_scheduling_data(
         self, 

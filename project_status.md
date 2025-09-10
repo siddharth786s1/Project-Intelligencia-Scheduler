@@ -38,8 +38,9 @@
 ✅ Integration with Data Service
 ✅ Algorithm implementation details (CSP and GA)
 ✅ Faculty preferences integration
-⏳ Worker configuration (in progress)
-⏳ Testing (pending)
+✅ Worker configuration with job queue
+✅ Queue status endpoint
+⏳ Testing (in progress)
 
 ### Frontend
 
