@@ -17,14 +17,15 @@
 ### Data Service:
 ✅ Base repository pattern implemented
 ✅ Models for institutions, departments, classrooms and room types created
+✅ Models for subjects and batches created
 ✅ Schema definitions with validation rules implemented
 ✅ API endpoints for CRUD operations developed
 ✅ Multi-tenant isolation for data security implemented
 ✅ Authentication and authorization framework set up
+✅ Subject-batch assignment functionality implemented
 ✅ Dockerfile created
 ✅ README documentation added
 ⏳ Testing (in progress)
-⏳ Subjects and batches endpoints (pending)
 ⏳ Faculty and teaching load management (pending)
 
 ### Scheduler Service:

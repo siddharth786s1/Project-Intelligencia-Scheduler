@@ -1,6 +1,6 @@
 # Data Service
 
-This microservice is responsible for managing educational data entities such as institutions, departments, classrooms, and room types.
+This microservice is responsible for managing educational data entities such as institutions, departments, classrooms, room types, subjects, and batches.
 
 ## Features
 
@@ -42,6 +42,26 @@ This microservice is responsible for managing educational data entities such as 
 - `GET /api/v1/room_types/{room_type_id}` - Get a specific room type
 - `PATCH /api/v1/room_types/{room_type_id}` - Update a room type
 - `DELETE /api/v1/room_types/{room_type_id}` - Delete a room type
+
+### Subjects
+
+- `POST /api/v1/subjects/` - Create a new subject
+- `GET /api/v1/subjects/` - List all subjects for the current institution
+- `GET /api/v1/subjects/?department_id={department_id}` - List subjects by department
+- `GET /api/v1/subjects/{subject_id}` - Get a specific subject
+- `PATCH /api/v1/subjects/{subject_id}` - Update a subject
+- `DELETE /api/v1/subjects/{subject_id}` - Delete a subject
+
+### Batches
+
+- `POST /api/v1/batches/` - Create a new batch
+- `GET /api/v1/batches/` - List all batches for the current institution
+- `GET /api/v1/batches/?department_id={department_id}` - List batches by department
+- `GET /api/v1/batches/{batch_id}` - Get a specific batch
+- `PATCH /api/v1/batches/{batch_id}` - Update a batch
+- `DELETE /api/v1/batches/{batch_id}` - Delete a batch
+- `POST /api/v1/batches/{batch_id}/subjects` - Assign subjects to a batch
+- `GET /api/v1/batches/{batch_id}/subjects` - Get subjects assigned to a batch
 
 ## Development
 
