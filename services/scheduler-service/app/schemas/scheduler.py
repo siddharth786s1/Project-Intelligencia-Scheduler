@@ -13,6 +13,12 @@ class SchedulingStatus(str, Enum):
     PARTIALLY_COMPLETED = "partially_completed"
 
 
+class AlgorithmType(str, Enum):
+    """Type of scheduling algorithm to use"""
+    CSP = "csp"
+    GENETIC = "genetic"
+
+
 class SchedulingRequest(BaseModel):
     """Request to create a new timetable"""
     name: str = Field(..., description="Name of the schedule generation")
@@ -30,6 +36,7 @@ class SchedulingRequest(BaseModel):
     end_date: str = Field(..., description="End date of the term (YYYY-MM-DD)")
     
     # Algorithm parameters
+    algorithm_type: AlgorithmType = Field(default=AlgorithmType.CSP, description="Type of algorithm to use")
     optimization_goals: List[str] = Field(
         default=["minimize_conflicts", "maximize_faculty_preferences"],
         description="Goals to optimize for"

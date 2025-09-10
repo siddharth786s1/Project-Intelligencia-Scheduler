@@ -36,11 +36,13 @@
 ✅ Scheduling algorithms framework created (CSP and GA)
 ✅ API endpoints for job management
 ✅ Integration with Data Service
-⏳ Algorithm implementation details (in progress)
+✅ Algorithm implementation details (CSP and GA)
+✅ Faculty preferences integration
 ⏳ Worker configuration (in progress)
 ⏳ Testing (pending)
 
-### Frontend:
+### Frontend
+
 ⏳ In Progress
 
 ## Phase 3: Composition and Finalization
