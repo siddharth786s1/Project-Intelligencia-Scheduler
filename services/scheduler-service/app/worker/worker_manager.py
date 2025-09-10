@@ -37,17 +37,10 @@ class WorkerManager:
         """
         self.max_workers = max_workers
         self.active_jobs: Dict[UUID, SchedulingJobStatus] = {}
-        
-        # Using a priority queue for job prioritization
         self.job_queue = asyncio.PriorityQueue()
-        
-        # Counter for maintaining FIFO order within the same priority level
-        self._counter = 0  
-        
-        # Track running workers
+        self._job_counter = 0
         self.running_workers = 0
         self._worker_task = None
-        
         # Create the worker task when initialized if auto_start is True
         if auto_start:
             try:
@@ -65,57 +58,27 @@ class WorkerManager:
     async def _worker_loop(self):
         """Main worker loop that processes jobs from the queue."""
         logger.info("Worker loop started")
-        
         while True:
-            # If we've reached the maximum number of workers, wait until one finishes
             if self.running_workers >= self.max_workers:
                 await asyncio.sleep(0.5)
                 continue
-            
             try:
-                # Get a job from the priority queue
-                # Items are tuples: (priority, counter, job_data)
-                # Lower priority number means higher priority (will be processed first)
-                priority_tuple = await self.job_queue.get()
-                
-                # The job data is the third element in the tuple
-                job_data = priority_tuple[2]
-                
-                # Increment running workers count
+                # Get the highest priority job (lowest negative priority value)
+                priority, _, job_data = await self.job_queue.get()
                 self.running_workers += 1
-                
-                # Update job status
                 job_id = job_data["job_id"]
                 process_func = job_data["process_func"]
-                
-                # Check if job was cancelled while in queue
-                if job_id in self.active_jobs and self.active_jobs[job_id].status == SchedulingStatus.CANCELLED:
-                    # Job was cancelled, no need to process it
-                    logger.info(f"Job {job_id} was cancelled while in queue, skipping processing")
-                    self.running_workers -= 1
-                    self.job_queue.task_done()
-                    continue
-                
-                # Update job to running state
-                if job_id in self.active_jobs:
+                if job_id in self.active_jobs and self.active_jobs[job_id].status == SchedulingStatus.QUEUED:
                     self.active_jobs[job_id].status = SchedulingStatus.RUNNING
                     self.active_jobs[job_id].started_at = datetime.now().isoformat()
-                
-                # Process the job in a separate task
                 asyncio.create_task(
                     self._process_job(job_id, process_func, job_data["args"], job_data["kwargs"])
                 )
-                
-                # Mark the priority queue task as done
-                self.job_queue.task_done()
-                
-            except asyncio.CancelledError:
-                # Worker loop was cancelled, exit gracefully
-                logger.info("Worker loop was cancelled")
-                break
+            except asyncio.QueueEmpty:
+                await asyncio.sleep(0.1)
             except Exception as e:
                 logger.exception(f"Error in worker loop: {str(e)}")
-                await asyncio.sleep(1)  # Sleep to avoid tight loop on error
+                await asyncio.sleep(1)
     
     async def _process_job(
         self, 
@@ -145,17 +108,12 @@ class WorkerManager:
                 self.active_jobs[job_id].completed_at = datetime.now().isoformat()
                 self.active_jobs[job_id].progress = 100.0
                 
-                # Store the entire result for reference
+                # Add result data if available, but only set allowed fields
                 if isinstance(result, dict):
-                    self.active_jobs[job_id].result = result
-                    
-                    # Also set individual fields for backward compatibility
+                    allowed_fields = set(self.active_jobs[job_id].__fields__)
                     for key, value in result.items():
-                        try:
+                        if key in allowed_fields:
                             setattr(self.active_jobs[job_id], key, value)
-                        except ValueError:
-                            # If the field doesn't exist in the model, that's ok
-                            logger.debug(f"Skipping field {key} in job result")
             
             logger.info(f"Job {job_id} completed successfully")
             
@@ -178,7 +136,6 @@ class WorkerManager:
         job_status: SchedulingJobStatus,
         process_func: Callable, 
         *args, 
-        priority: int = 0,
         **kwargs
     ):
         """
@@ -189,34 +146,22 @@ class WorkerManager:
             job_status: Initial job status
             process_func: The function to call to process the job
             *args: Positional arguments for the function
-            priority: Job priority (higher number = higher priority)
             **kwargs: Keyword arguments for the function
         """
-        # Store the job status
         self.active_jobs[job_id] = job_status
-        
-        # Create the job data
-        job_data = {
+        # Use negative priority so higher numbers are dequeued first
+        # Higher priority values should come first
+        priority = -getattr(job_status, "priority", 0)
+        self._job_counter += 1
+        # Use negative counter to preserve insertion order within same priority
+        counter = -self._job_counter
+        await self.job_queue.put((priority, counter, {
             "job_id": job_id,
             "process_func": process_func,
             "args": args,
             "kwargs": kwargs
-        }
-        
-        # For priority queue, we use a tuple with:
-        # (-priority, counter, job_data)
-        # - Negative priority so that higher numbers have higher priority
-        # - Counter ensures FIFO behavior for equal priorities
-        # - Job data contains the actual job information
-        priority_tuple = (-priority, self._counter, job_data)
-        self._counter += 1
-        
-        # Add the job to the queue with priority
-        await self.job_queue.put(priority_tuple)
-        
+        }))
         logger.info(f"Job {job_id} submitted to queue with priority {priority}")
-        
-        # Make sure the worker task is running
         self._start_worker_task()
     
     def get_job_status(self, job_id: UUID) -> Optional[SchedulingJobStatus]:
@@ -243,13 +188,7 @@ class WorkerManager:
             "running_workers": self.running_workers,
             "max_workers": self.max_workers,
             "active_jobs": len(self.active_jobs),
-            "worker_task_running": self._worker_task is not None and not self._worker_task.done(),
-            "completed_jobs": sum(1 for status in self.active_jobs.values() 
-                               if status.status == SchedulingStatus.COMPLETED),
-            "failed_jobs": sum(1 for status in self.active_jobs.values() 
-                            if status.status == SchedulingStatus.FAILED),
-            "cancelled_jobs": sum(1 for status in self.active_jobs.values()
-                              if status.status == SchedulingStatus.CANCELLED)
+            "worker_task_running": self._worker_task is not None and not self._worker_task.done()
         }
     
     async def cancel_job(self, job_id: UUID) -> bool:
@@ -309,31 +248,6 @@ class WorkerManager:
             await asyncio.sleep(0.5)
         
         logger.info("Worker manager shut down successfully")
-    
-    async def wait_for_job_completion(self, job_id: UUID, timeout: float = 5.0):
-        """
-        Wait for a specific job to complete, with timeout.
-        Useful for testing.
-        
-        Args:
-            job_id: The ID of the job to wait for
-            timeout: Maximum time to wait in seconds
-            
-        Returns:
-            True if job completed, False if timed out
-        """
-        start_time = time.time()
-        while time.time() - start_time < timeout:
-            job_status = self.get_job_status(job_id)
-            if not job_status:
-                return False
-                
-            if job_status.status in [SchedulingStatus.COMPLETED, SchedulingStatus.FAILED, SchedulingStatus.CANCELLED]:
-                return True
-                
-            await asyncio.sleep(0.1)
-            
-        return False
 
 
 # Create a singleton instance
