@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # CORS
     BACKEND_CORS_ORIGINS: list[str] = ["*"]
     
+    # Testing flag
+    TESTING: bool = False
+    
     class Config:
         env_file = ".env"
         case_sensitive = True

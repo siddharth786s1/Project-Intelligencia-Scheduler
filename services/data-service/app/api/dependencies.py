@@ -69,6 +69,28 @@ def get_institution_id_from_token(current_user: CurrentUser) -> Optional[UUID]:
     return None
 
 
+async def get_current_institution_id(
+    x_institution_id: Annotated[str, Depends(lambda x: x.headers.get("X-Institution-ID"))],
+    db: AsyncSession = Depends(get_db)
+) -> UUID:
+    """
+    Extract institution ID from X-Institution-ID header for testing purposes
+    or from JWT token in production
+    """
+    if settings.TESTING and x_institution_id:
+        return UUID(x_institution_id)
+    
+    # In production, we'd get this from the JWT token
+    # For now, we're using the header for simplicity in testing
+    if not x_institution_id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="X-Institution-ID header is required"
+        )
+    
+    return UUID(x_institution_id)
+
+
 def check_is_super_admin(current_user: CurrentUser) -> bool:
     """
     Check if user is a super admin

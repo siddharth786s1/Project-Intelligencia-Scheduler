@@ -31,6 +31,10 @@ app.dependency_overrides[get_db] = override_get_db
 
 @pytest.fixture
 async def test_db():
+    # Set testing flag to True
+    from app.core.config import settings
+    settings.TESTING = True
+    
     # Create the test database tables
     async with test_engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
@@ -127,3 +131,74 @@ def faculty_token_headers(test_db):
         }
     )
     return {"Authorization": f"Bearer {token}"}
+
+@pytest.fixture
+def test_institution_id():
+    # Return the UUID of the test institution created in the test_db fixture
+    return uuid.UUID("12345678-1234-1234-1234-123456789012")
+
+@pytest.fixture
+async def client(test_db):
+    # Create an async client for testing
+    from httpx import AsyncClient
+    async with AsyncClient(app=app, base_url="http://test") as ac:
+        yield ac
+
+@pytest.fixture
+async def create_test_room_type(client, test_institution_id):
+    # Create a test room type for classroom tests
+    room_type_data = {
+        "name": "Lecture Hall",
+        "description": "Large room for lectures"
+    }
+    
+    response = await client.post(
+        app.url_path_for("create_room_type"),
+        json=room_type_data,
+        headers={"X-Institution-ID": str(test_institution_id)}
+    )
+    assert response.status_code == 200
+    room_type = response.json()["data"]
+    yield room_type["id"]
+
+@pytest.fixture
+async def create_test_subject(client, test_institution_id, create_test_department):
+    # Create a test subject for faculty tests
+    subject_data = {
+        "name": "Machine Learning",
+        "code": "CS403",
+        "description": "Introduction to ML algorithms",
+        "credit_hours": 4,
+        "lecture_hours_per_week": 3,
+        "practical_hours_per_week": 2,
+        "department_id": create_test_department
+    }
+    
+    response = await client.post(
+        app.url_path_for("create_subject"),
+        json=subject_data,
+        headers={"X-Institution-ID": str(test_institution_id)}
+    )
+    assert response.status_code == 200
+    subject = response.json()["data"]
+    yield subject["id"]
+
+@pytest.fixture
+async def create_test_batch(client, test_institution_id, create_test_department):
+    # Create a test batch for faculty tests
+    batch_data = {
+        "name": "CS-2025",
+        "year": 2025,
+        "semester": 5,
+        "capacity": 60,
+        "department_id": create_test_department
+    }
+    
+    response = await client.post(
+        app.url_path_for("create_batch"),
+        json=batch_data,
+        headers={"X-Institution-ID": str(test_institution_id)}
+    )
+    assert response.status_code == 200
+    batch = response.json()["data"]
+    yield batch["id"]

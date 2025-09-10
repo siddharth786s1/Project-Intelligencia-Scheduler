@@ -1,3 +1,10 @@
-# Define __init__.py files for each directory to enable proper Python importing
+# Import all endpoint modules to make them available via the endpoints package
 
-# This file is intentionally left empty
+from . import institutions
+from . import departments
+from . import classrooms
+from . import room_types
+from . import subjects
+from . import batches
+from . import faculty
+from . import faculty_preferences
