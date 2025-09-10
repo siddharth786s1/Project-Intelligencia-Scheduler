@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  # Database
+  db:
+    image: postgres:15
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/init:/docker-entrypoint-initdb.d
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_MULTIPLE_DATABASES: "iam_service_db,data_service_db,scheduler_service_db"
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # IAM Service
+  iam-service:
+    build: ./services/iam-service
+    ports:
+      - "8001:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_HOST: db
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: iam_service_db
+      DATABASE_PORT: 5432
+      JWT_SECRET_KEY: development_jwt_secret_key_change_in_production
+
+  # Data Service
+  data-service:
+    build: ./services/data-service
+    ports:
+      - "8002:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      iam-service:
+        condition: service_started
+    environment:
+      DATABASE_HOST: db
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: data_service_db
+      DATABASE_PORT: 5432
+      JWT_SECRET_KEY: development_jwt_secret_key_change_in_production
+      IAM_SERVICE_URL: http://iam-service:8000
+
+  # Scheduler Service
+  scheduler-service:
+    build: ./services/scheduler-service
+    ports:
+      - "8003:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      data-service:
+        condition: service_started
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_HOST: db
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: scheduler_service_db
+      DATABASE_PORT: 5432
+      JWT_SECRET_KEY: development_jwt_secret_key_change_in_production
+      DATA_SERVICE_URL: http://data-service:8000
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+
+  # Scheduler Workers
+  scheduler-worker:
+    build:
+      context: ./services/scheduler-service
+      dockerfile: worker/Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      DATABASE_HOST: db
+      DATABASE_USER: postgres
+      DATABASE_PASSWORD: postgres
+      DATABASE_NAME: scheduler_service_db
+      DATABASE_PORT: 5432
+      JWT_SECRET_KEY: development_jwt_secret_key_change_in_production
+      DATA_SERVICE_URL: http://data-service:8000
+      RABBITMQ_URL: amqp://guest:guest@rabbitmq:5672/
+
+  # RabbitMQ
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Frontend
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - iam-service
+      - data-service
+      - scheduler-service
+    environment:
+      VITE_API_BASE_URL: http://localhost:8080/api
+      VITE_IAM_SERVICE_URL: http://localhost:8001/api/v1
+      VITE_DATA_SERVICE_URL: http://localhost:8002/api/v1
+      VITE_SCHEDULER_SERVICE_URL: http://localhost:8003/api/v1
+
+  # NGINX
+  nginx:
+    build: ./nginx
+    ports:
+      - "80:80"
+    depends_on:
+      - iam-service
+      - data-service
+      - scheduler-service
+      - frontend
+
+volumes:
+  postgres_data:

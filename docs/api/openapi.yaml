@@ -1,0 +1,1645 @@
+openapi: "3.0.3"
+info:
+  title: Project Intelligencia Scheduler API
+  description: >
+    API specification for the Smart Classroom & Timetable Scheduler platform.
+    This is a comprehensive multi-tenant system with multiple microservices.
+  version: "1.0.0"
+  contact:
+    name: Project Intelligencia Scheduler Team
+
+servers:
+  - url: http://localhost:8000
+    description: Local development server
+  - url: https://api.intelligencia-scheduler.edu
+    description: Production server
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+        details:
+          type: object
+
+    PaginatedResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            type: object
+        total:
+          type: integer
+        page:
+          type: integer
+        page_size:
+          type: integer
+        total_pages:
+          type: integer
+
+    # IAM Service Schemas
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+
+    TokenResponse:
+      type: object
+      properties:
+        access_token:
+          type: string
+        token_type:
+          type: string
+        expires_in:
+          type: integer
+        refresh_token:
+          type: string
+        user_id:
+          type: string
+          format: uuid
+        role:
+          type: string
+        institution_id:
+          type: string
+          format: uuid
+
+    UserCreate:
+      type: object
+      required:
+        - email
+        - password
+        - first_name
+        - last_name
+        - role_id
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          format: password
+        first_name:
+          type: string
+        last_name:
+          type: string
+        role_id:
+          type: string
+          format: uuid
+        institution_id:
+          type: string
+          format: uuid
+
+    UserResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        first_name:
+          type: string
+        last_name:
+          type: string
+        role_id:
+          type: string
+          format: uuid
+        role:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+        institution_id:
+          type: string
+          format: uuid
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+
+    RoleResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+          
+    # Data Service Schemas
+    InstitutionCreate:
+      type: object
+      required:
+        - name
+        - code
+        - contact_email
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        address:
+          type: string
+        contact_email:
+          type: string
+          format: email
+        contact_phone:
+          type: string
+        website:
+          type: string
+        logo_url:
+          type: string
+
+    InstitutionResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        code:
+          type: string
+        address:
+          type: string
+        contact_email:
+          type: string
+          format: email
+        contact_phone:
+          type: string
+        website:
+          type: string
+        logo_url:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    DepartmentCreate:
+      type: object
+      required:
+        - name
+        - code
+      properties:
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+        head_user_id:
+          type: string
+          format: uuid
+
+    DepartmentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        institution_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        code:
+          type: string
+        description:
+          type: string
+        head_user_id:
+          type: string
+          format: uuid
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    ClassroomCreate:
+      type: object
+      required:
+        - name
+        - capacity
+        - room_type_id
+      properties:
+        name:
+          type: string
+        building:
+          type: string
+        floor:
+          type: string
+        capacity:
+          type: integer
+        room_type_id:
+          type: string
+          format: uuid
+        is_lab:
+          type: boolean
+          default: false
+        has_projector:
+          type: boolean
+          default: false
+        has_computers:
+          type: boolean
+          default: false
+        additional_facilities:
+          type: string
+
+    ClassroomResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        institution_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        building:
+          type: string
+        floor:
+          type: string
+        capacity:
+          type: integer
+        room_type_id:
+          type: string
+          format: uuid
+        room_type:
+          type: object
+          properties:
+            id:
+              type: string
+              format: uuid
+            name:
+              type: string
+        is_lab:
+          type: boolean
+        has_projector:
+          type: boolean
+        has_computers:
+          type: boolean
+        additional_facilities:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    RoomTypeCreate:
+      type: object
+      required:
+        - name
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+
+    RoomTypeResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        institution_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SubjectCreate:
+      type: object
+      required:
+        - department_id
+        - code
+        - name
+        - credits
+        - lecture_hours_per_week
+      properties:
+        department_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        credits:
+          type: integer
+        lecture_hours_per_week:
+          type: integer
+        lab_hours_per_week:
+          type: integer
+          default: 0
+        tutorial_hours_per_week:
+          type: integer
+          default: 0
+        requires_lab:
+          type: boolean
+          default: false
+
+    SubjectResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        institution_id:
+          type: string
+          format: uuid
+        department_id:
+          type: string
+          format: uuid
+        code:
+          type: string
+        name:
+          type: string
+        description:
+          type: string
+        credits:
+          type: integer
+        lecture_hours_per_week:
+          type: integer
+        lab_hours_per_week:
+          type: integer
+        tutorial_hours_per_week:
+          type: integer
+        requires_lab:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FacultyCreate:
+      type: object
+      required:
+        - employee_code
+        - department_id
+        - user_id
+      properties:
+        employee_code:
+          type: string
+        user_id:
+          type: string
+          format: uuid
+        department_id:
+          type: string
+          format: uuid
+        designation:
+          type: string
+        specialization:
+          type: string
+        max_hours_per_day:
+          type: integer
+          default: 6
+        max_hours_per_week:
+          type: integer
+          default: 25
+
+    FacultyResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        institution_id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        user:
+          type: object
+          properties:
+            first_name:
+              type: string
+            last_name:
+              type: string
+            email:
+              type: string
+              format: email
+        employee_code:
+          type: string
+        department_id:
+          type: string
+          format: uuid
+        department:
+          type: object
+          properties:
+            name:
+              type: string
+        designation:
+          type: string
+        specialization:
+          type: string
+        max_hours_per_day:
+          type: integer
+        max_hours_per_week:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    FacultyPreferenceCreate:
+      type: object
+      required:
+        - faculty_id
+        - day_of_week
+        - start_time
+        - end_time
+        - preference_type
+      properties:
+        faculty_id:
+          type: string
+          format: uuid
+        day_of_week:
+          type: integer
+          minimum: 0
+          maximum: 6
+          description: 0 = Monday, 6 = Sunday
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        preference_type:
+          type: string
+          enum: [preferred, unavailable]
+        reason:
+          type: string
+
+    FacultyPreferenceResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        faculty_id:
+          type: string
+          format: uuid
+        day_of_week:
+          type: integer
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        preference_type:
+          type: string
+        reason:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    BatchCreate:
+      type: object
+      required:
+        - department_id
+        - name
+        - academic_year
+        - semester
+        - strength
+      properties:
+        department_id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        academic_year:
+          type: string
+        semester:
+          type: integer
+          minimum: 1
+          maximum: 8
+        strength:
+          type: integer
+
+    BatchResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        institution_id:
+          type: string
+          format: uuid
+        department_id:
+          type: string
+          format: uuid
+        department:
+          type: object
+          properties:
+            name:
+              type: string
+        name:
+          type: string
+        academic_year:
+          type: string
+        semester:
+          type: integer
+        strength:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    SubjectFacultyAssignmentCreate:
+      type: object
+      required:
+        - subject_id
+        - faculty_id
+        - batch_id
+        - academic_year
+        - semester
+      properties:
+        subject_id:
+          type: string
+          format: uuid
+        faculty_id:
+          type: string
+          format: uuid
+        batch_id:
+          type: string
+          format: uuid
+        academic_year:
+          type: string
+        semester:
+          type: integer
+          minimum: 1
+          maximum: 8
+
+    SubjectFacultyAssignmentResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        institution_id:
+          type: string
+          format: uuid
+        subject_id:
+          type: string
+          format: uuid
+        subject:
+          type: object
+          properties:
+            code:
+              type: string
+            name:
+              type: string
+        faculty_id:
+          type: string
+          format: uuid
+        faculty:
+          type: object
+          properties:
+            user:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+        batch_id:
+          type: string
+          format: uuid
+        batch:
+          type: object
+          properties:
+            name:
+              type: string
+        academic_year:
+          type: string
+        semester:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    BulkImportRequest:
+      type: object
+      required:
+        - entity_type
+        - file_content
+      properties:
+        entity_type:
+          type: string
+          enum: [departments, classrooms, subjects, faculty, batches, subject_faculty_assignments]
+        file_content:
+          type: string
+          format: byte
+          description: Base64 encoded CSV file
+
+    BulkImportResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+        imported_count:
+          type: integer
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              row:
+                type: integer
+              errors:
+                type: array
+                items:
+                  type: string
+
+    # Scheduler Service Schemas
+    JobCreate:
+      type: object
+      required:
+        - department_id
+        - academic_year
+        - semester
+        - config
+      properties:
+        department_id:
+          type: string
+          format: uuid
+          description: Department for which to generate the timetable
+        academic_year:
+          type: string
+          description: Academic year (e.g., "2025-2026")
+        semester:
+          type: integer
+          minimum: 1
+          maximum: 8
+        config:
+          type: object
+          properties:
+            faculty_gap_penalty:
+              type: integer
+              default: 10
+            student_gap_penalty:
+              type: integer
+              default: 8
+            faculty_preference_weight:
+              type: integer
+              default: 5
+            max_consecutive_classes:
+              type: integer
+              default: 3
+            load_balance_weight:
+              type: integer
+              default: 3
+            classroom_proximity_weight:
+              type: integer
+              default: 2
+            num_solutions:
+              type: integer
+              default: 5
+              description: Number of top solutions to return (1-10)
+            max_generations:
+              type: integer
+              default: 100
+              description: Max generations for genetic algorithm
+            population_size:
+              type: integer
+              default: 50
+              description: Population size for genetic algorithm
+
+    JobResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        institution_id:
+          type: string
+          format: uuid
+        department_id:
+          type: string
+          format: uuid
+        department:
+          type: object
+          properties:
+            name:
+              type: string
+        academic_year:
+          type: string
+        semester:
+          type: integer
+        submitted_by:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending, in_progress, completed, failed]
+        error_message:
+          type: string
+        config:
+          type: object
+        created_at:
+          type: string
+          format: date-time
+        started_at:
+          type: string
+          format: date-time
+        completed_at:
+          type: string
+          format: date-time
+
+    TimetableResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        job_id:
+          type: string
+          format: uuid
+        institution_id:
+          type: string
+          format: uuid
+        rank:
+          type: integer
+        fitness_score:
+          type: number
+          format: float
+        status:
+          type: string
+          enum: [draft, submitted, approved, rejected, published]
+        reviewed_by:
+          type: string
+          format: uuid
+        review_comments:
+          type: string
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimetableEntryResponse'
+
+    TimetableEntryResponse:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        subject_faculty_assignment_id:
+          type: string
+          format: uuid
+        subject:
+          type: object
+          properties:
+            code:
+              type: string
+            name:
+              type: string
+        faculty:
+          type: object
+          properties:
+            first_name:
+              type: string
+            last_name:
+              type: string
+        batch:
+          type: object
+          properties:
+            name:
+              type: string
+        day_of_week:
+          type: integer
+        start_time:
+          type: string
+          format: time
+        end_time:
+          type: string
+          format: time
+        classroom_id:
+          type: string
+          format: uuid
+        classroom:
+          type: object
+          properties:
+            name:
+              type: string
+            building:
+              type: string
+        is_lab_session:
+          type: boolean
+
+    TimetableUpdateStatus:
+      type: object
+      required:
+        - status
+      properties:
+        status:
+          type: string
+          enum: [draft, submitted, approved, rejected, published]
+        review_comments:
+          type: string
+
+security:
+  - bearerAuth: []
+
+paths:
+  # IAM Service Endpoints
+  /api/v1/auth/login:
+    post:
+      tags:
+        - Authentication
+      summary: Login with email and password
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/auth/refresh:
+    post:
+      tags:
+        - Authentication
+      summary: Refresh access token
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - refresh_token
+              properties:
+                refresh_token:
+                  type: string
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenResponse'
+        '401':
+          description: Invalid refresh token
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/users:
+    get:
+      tags:
+        - Users
+      summary: Get all users
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: role_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/UserResponse'
+    post:
+      tags:
+        - Users
+      summary: Create a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+
+  /api/v1/users/{id}:
+    get:
+      tags:
+        - Users
+      summary: Get user by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      tags:
+        - Users
+      summary: Update a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                first_name:
+                  type: string
+                last_name:
+                  type: string
+                password:
+                  type: string
+                is_active:
+                  type: boolean
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserResponse'
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - Users
+      summary: Delete a user
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: No content
+        '404':
+          description: User not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/roles:
+    get:
+      tags:
+        - Roles
+      summary: Get all roles
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoleResponse'
+
+  # Data Service Endpoints
+  /api/v1/institutions:
+    get:
+      tags:
+        - Institutions
+      summary: Get all institutions
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/InstitutionResponse'
+    
+    post:
+      tags:
+        - Institutions
+      summary: Create a new institution
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstitutionCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstitutionResponse'
+
+  /api/v1/institutions/{id}:
+    get:
+      tags:
+        - Institutions
+      summary: Get institution by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstitutionResponse'
+        '404':
+          description: Institution not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      tags:
+        - Institutions
+      summary: Update an institution
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InstitutionCreate'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstitutionResponse'
+        '404':
+          description: Institution not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - Institutions
+      summary: Delete an institution
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: No content
+        '404':
+          description: Institution not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/departments:
+    get:
+      tags:
+        - Departments
+      summary: Get all departments
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 50
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/DepartmentResponse'
+    
+    post:
+      tags:
+        - Departments
+      summary: Create a new department
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentResponse'
+
+  /api/v1/departments/{id}:
+    get:
+      tags:
+        - Departments
+      summary: Get department by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentResponse'
+        '404':
+          description: Department not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    put:
+      tags:
+        - Departments
+      summary: Update a department
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DepartmentCreate'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DepartmentResponse'
+        '404':
+          description: Department not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+    
+    delete:
+      tags:
+        - Departments
+      summary: Delete a department
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: No content
+        '404':
+          description: Department not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Similar patterns repeated for classrooms, subjects, faculty, batches, etc.
+  # Only showing a few examples to keep the file manageable
+  
+  /api/v1/classrooms:
+    get:
+      tags:
+        - Classrooms
+      summary: Get all classrooms
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: room_type_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: is_lab
+          in: query
+          schema:
+            type: boolean
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/ClassroomResponse'
+    
+    post:
+      tags:
+        - Classrooms
+      summary: Create a new classroom
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClassroomCreate'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClassroomResponse'
+
+  /api/v1/import:
+    post:
+      tags:
+        - Data Import
+      summary: Import data from CSV
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BulkImportRequest'
+      responses:
+        '200':
+          description: Import successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BulkImportResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # Scheduler Service Endpoints
+  /api/v1/jobs:
+    post:
+      tags:
+        - Timetable Generation
+      summary: Create a new timetable generation job
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/JobCreate'
+      responses:
+        '202':
+          description: Accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+
+    get:
+      tags:
+        - Timetable Generation
+      summary: Get all timetable generation jobs
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [pending, in_progress, completed, failed]
+        - name: department_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/JobResponse'
+
+  /api/v1/jobs/{id}:
+    get:
+      tags:
+        - Timetable Generation
+      summary: Get job by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/JobResponse'
+        '404':
+          description: Job not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /api/v1/timetables:
+    get:
+      tags:
+        - Timetables
+      summary: Get all timetables
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            default: 1
+        - name: page_size
+          in: query
+          schema:
+            type: integer
+            default: 50
+        - name: job_id
+          in: query
+          schema:
+            type: string
+            format: uuid
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [draft, submitted, approved, rejected, published]
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/PaginatedResponse'
+                  - type: object
+                    properties:
+                      items:
+                        type: array
+                        items:
+                          $ref: '#/components/schemas/TimetableResponse'
+
+  /api/v1/timetables/{id}:
+    get:
+      tags:
+        - Timetables
+      summary: Get timetable by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimetableResponse'
+        '404':
+          description: Timetable not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+    patch:
+      tags:
+        - Timetables
+      summary: Update timetable status
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimetableUpdateStatus'
+      responses:
+        '200':
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimetableResponse'
+        '404':
+          description: Timetable not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
