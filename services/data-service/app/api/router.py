@@ -9,7 +9,11 @@ from app.api.endpoints import (
     subjects,
     batches,
     faculty,
-    faculty_preferences
+    faculty_preferences,
+    scheduled_sessions,
+    time_slots,
+    scheduling_constraints,
+    schedule_generations
 )
 
 api_router = APIRouter(prefix=settings.API_V1_PREFIX)
@@ -23,3 +27,7 @@ api_router.include_router(subjects.router, prefix="/subjects", tags=["subjects"]
 api_router.include_router(batches.router, prefix="/batches", tags=["batches"])
 api_router.include_router(faculty.router, prefix="/faculty", tags=["faculty"])
 api_router.include_router(faculty_preferences.router, prefix="/faculty-preferences", tags=["faculty_preferences"])
+api_router.include_router(scheduled_sessions.router)
+api_router.include_router(time_slots.router)
+api_router.include_router(scheduling_constraints.router)
+api_router.include_router(schedule_generations.router)

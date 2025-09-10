@@ -24,6 +24,9 @@ We've made significant progress on the Data Service implementation, focusing on 
   - Batches
   - Faculty
   - Faculty Preferences (Availability, Subject Expertise, Teaching Preferences)
+  - Time Slots
+  - Scheduling Constraints
+  - Scheduled Sessions
 - Defined relationships between models
 - Added proper indexing for efficient queries
 - Implemented many-to-many relationships for batch-subject associations
@@ -63,16 +66,25 @@ We've made significant progress on the Data Service implementation, focusing on 
 - Applied tenant isolation for all data operations
 - Enforced proper authorization for cross-entity operations
 
+### Repositories
+
+- Implemented specialized repositories for:
+  - Base CRUD operations
+  - Institution management
+  - Department management
+  - Classroom and Room Type management
+  - Subject and Batch management
+  - Faculty and Faculty Preferences management
+  - Time Slot management
+  - Scheduling Constraints management
+  - Scheduled Sessions management with timetable views
+
 ## Next Steps
 
-1. Implement remaining entities:
-   - Time slots
-   - Scheduling constraints
-   - Course Sessions
-2. Connect Faculty with IAM user accounts
-3. Add comprehensive test coverage for faculty management
-4. Optimize faculty-related database queries
-5. Add caching for frequently accessed faculty and preference data
-6. Enhance API documentation with Swagger UI
-7. Implement bulk operations for faculty preferences
-8. Create dashboard views for faculty workload and expertise
+1. Connect Faculty with IAM user accounts
+2. Add comprehensive test coverage for all repositories
+3. Optimize database queries for complex scheduling operations
+4. Add caching for frequently accessed timetable data
+5. Enhance API documentation with Swagger UI
+6. Implement bulk operations for scheduling constraints
+7. Create dashboard views for faculty workload and scheduling metrics

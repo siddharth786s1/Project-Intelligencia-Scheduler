@@ -21,4 +21,6 @@ class Classroom(Base):
     # Relationships
     institution = relationship("Institution", back_populates="classrooms")
     room_type = relationship("RoomType", back_populates="classrooms")
-    # Other relationships would be defined here (schedules, etc.)
+    faculty_preferences = relationship("FacultyTeachingPreference", back_populates="classroom")
+    constraints = relationship("SchedulingConstraint", back_populates="classroom")
+    sessions = relationship("ScheduledSession", back_populates="classroom")

@@ -25,4 +25,7 @@ class Subject(Base):
     # Relationships
     department = relationship("Department", back_populates="subjects")
     institution = relationship("Institution", back_populates="subjects")
-    # Other relationships would be defined here (faculty assignments, batch associations, etc.)
+    faculty_expertise = relationship("FacultySubjectExpertise", back_populates="subject")
+    faculty_preferences = relationship("FacultyTeachingPreference", back_populates="subject")
+    constraints = relationship("SchedulingConstraint", back_populates="subject")
+    sessions = relationship("ScheduledSession", back_populates="subject")

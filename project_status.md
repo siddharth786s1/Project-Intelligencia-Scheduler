@@ -25,11 +25,20 @@
 ✅ Subject-batch assignment functionality implemented
 ✅ Dockerfile created
 ✅ README documentation added
+✅ Faculty and teaching load management implemented
+✅ TimeSlot models and repositories implemented
+✅ Scheduling constraints models and repositories implemented
+✅ Scheduled sessions models and repositories implemented
 ⏳ Testing (in progress)
-⏳ Faculty and teaching load management (pending)
 
 ### Scheduler Service:
-⏳ In Progress
+✅ Base service architecture implemented
+✅ Scheduling algorithms framework created (CSP and GA)
+✅ API endpoints for job management
+✅ Integration with Data Service
+⏳ Algorithm implementation details (in progress)
+⏳ Worker configuration (in progress)
+⏳ Testing (pending)
 
 ### Frontend:
 ⏳ In Progress
@@ -43,18 +52,14 @@
 ## Next Steps
 
 1. Complete Data Service:
-   - Implement subjects and batches endpoints
-   - Add faculty and teaching load management
    - Complete comprehensive test coverage
    - Integrate with scheduler service
 
-2. Continue implementing the Scheduler Service:
-   - Write tests
-   - Implement models and repositories
-   - Implement core scheduling algorithm (CSP + GA)
-   - Implement API endpoints
-   - Create Dockerfile and worker configuration
-   - Write documentation
+2. Complete the Scheduler Service:
+   - Implement detailed algorithm components (CSP + GA)
+   - Complete worker configuration for async processing
+   - Add comprehensive tests
+   - Connect with frontend for timetable generation requests
 
 3. Implement the Frontend:
    - Set up React with Vite

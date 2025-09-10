@@ -29,5 +29,18 @@ from .faculty_preferences import (
     FacultyClassroomPreferenceCreate, FacultyClassroomPreferenceUpdate, FacultyClassroomPreferenceResponse,
     FacultyPreferencesResponse
 )
+from .time_slot import (
+    DayOfWeek, TimeSlotCreate, TimeSlotUpdate, TimeSlotResponse
+)
+from .scheduling_constraint import (
+    ConstraintType, ConstraintScope, 
+    SchedulingConstraintCreate, SchedulingConstraintUpdate, 
+    SchedulingConstraintResponse, SchedulingConstraintDetailResponse
+)
+from .scheduled_session import (
+    ScheduledSessionCreate, ScheduledSessionUpdate, 
+    ScheduledSessionResponse, ScheduledSessionDetailResponse,
+    ScheduleGenerationSummary
+)
 from .response import ResponseModel, PaginatedResponseModel
 from .common import PaginationParams

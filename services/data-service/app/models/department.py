@@ -20,4 +20,6 @@ class Department(Base):
     
     # Relationships
     institution = relationship("Institution", back_populates="departments")
-    # Other relationships would be defined here (classrooms, faculty, etc.)
+    subjects = relationship("Subject", back_populates="department")
+    batches = relationship("Batch", back_populates="department")
+    faculty = relationship("Faculty", back_populates="department")

@@ -18,3 +18,10 @@ from .associations import (
     BatchSubjectAssociation,
     DepartmentSubjectAssociation
 )
+from .time_slot import TimeSlot
+from .scheduling_constraint import (
+    ConstraintType,
+    ConstraintScope,
+    SchedulingConstraint
+)
+from .scheduled_session import ScheduledSession

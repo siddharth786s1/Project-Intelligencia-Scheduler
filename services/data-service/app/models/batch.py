@@ -23,4 +23,6 @@ class Batch(Base):
     # Relationships
     department = relationship("Department", back_populates="batches")
     institution = relationship("Institution", back_populates="batches")
-    # Other relationships would be defined here (subjects, schedules, etc.)
+    faculty_preferences = relationship("FacultyTeachingPreference", back_populates="batch")
+    constraints = relationship("SchedulingConstraint", back_populates="batch")
+    sessions = relationship("ScheduledSession", back_populates="batch")
