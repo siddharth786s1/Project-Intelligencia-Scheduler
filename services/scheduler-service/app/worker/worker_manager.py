@@ -27,12 +27,13 @@ class WorkerManager:
     - Providing methods to submit and query jobs
     """
     
-    def __init__(self, max_workers: int = 2):
+    def __init__(self, max_workers: int = 2, auto_start: bool = True):
         """
         Initialize the worker manager.
         
         Args:
             max_workers: Maximum number of concurrent worker processes
+            auto_start: Whether to automatically start the worker task on initialization
         """
         self.max_workers = max_workers
         self.active_jobs: Dict[UUID, SchedulingJobStatus] = {}
@@ -40,8 +41,13 @@ class WorkerManager:
         self.running_workers = 0
         self._worker_task = None
         
-        # Create the worker task when initialized
-        self._start_worker_task()
+        # Create the worker task when initialized if auto_start is True
+        if auto_start:
+            try:
+                self._start_worker_task()
+            except RuntimeError:
+                logger.warning("No running event loop, worker task not started automatically")
+                # In test environments, we'll start the worker task manually
     
     def _start_worker_task(self):
         """Start the worker task if it's not already running."""
@@ -194,7 +200,65 @@ class WorkerManager:
             "active_jobs": len(self.active_jobs),
             "worker_task_running": self._worker_task is not None and not self._worker_task.done()
         }
+    
+    async def cancel_job(self, job_id: UUID) -> bool:
+        """
+        Cancel a job if it's in the queue or mark it as cancelled if it's running.
+        
+        Args:
+            job_id: The ID of the job to cancel
+            
+        Returns:
+            True if the job was cancelled, False if it doesn't exist
+        """
+        # Check if the job exists
+        if job_id not in self.active_jobs:
+            return False
+        
+        # Get current status
+        current_status = self.active_jobs[job_id].status
+        
+        # If the job is queued, we can simply mark it as cancelled
+        if current_status == SchedulingStatus.QUEUED:
+            self.active_jobs[job_id].status = SchedulingStatus.CANCELLED
+            self.active_jobs[job_id].completed_at = datetime.now().isoformat()
+            self.active_jobs[job_id].message = "Job cancelled before execution"
+            return True
+        
+        # If the job is running, we can mark it as cancelled
+        # but the actual processing will continue until it completes
+        elif current_status == SchedulingStatus.RUNNING:
+            self.active_jobs[job_id].status = SchedulingStatus.CANCELLED
+            self.active_jobs[job_id].completed_at = datetime.now().isoformat()
+            self.active_jobs[job_id].message = "Job marked for cancellation while running"
+            return True
+            
+        # Job is already in a final state
+        return False
+    
+    async def shutdown(self):
+        """
+        Gracefully shutdown the worker manager.
+        Waits for current jobs to complete but doesn't accept new ones.
+        """
+        logger.info("Shutting down worker manager...")
+        
+        # Cancel the worker task
+        if self._worker_task and not self._worker_task.done():
+            self._worker_task.cancel()
+            
+            try:
+                await self._worker_task
+            except asyncio.CancelledError:
+                logger.info("Worker task cancelled")
+        
+        # Wait for running workers to finish
+        while self.running_workers > 0:
+            logger.info(f"Waiting for {self.running_workers} workers to finish...")
+            await asyncio.sleep(0.5)
+        
+        logger.info("Worker manager shut down successfully")
 
 
 # Create a singleton instance
-worker_manager = WorkerManager(max_workers=2)
+worker_manager = WorkerManager(max_workers=2, auto_start=True)
