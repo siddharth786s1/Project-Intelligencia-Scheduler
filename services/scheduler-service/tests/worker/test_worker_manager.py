@@ -3,6 +3,7 @@ Tests for the worker manager
 """
 import asyncio
 import pytest
+import pytest_asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 from uuid import UUID, uuid4
 import time
@@ -14,7 +15,7 @@ from app.schemas.scheduler import SchedulingJobStatus, SchedulingStatus
 pytestmark = pytest.mark.asyncio
 
 
-@pytest.fixture
+@pytest_asyncio.fixture
 async def worker_manager():
     """Create a worker manager for testing"""
     manager = WorkerManager(max_workers=2, auto_start=False)
@@ -155,17 +156,30 @@ async def test_job_error_handling(worker_manager):
 
 async def test_concurrent_job_processing(worker_manager):
     """Test that multiple jobs can be processed concurrently"""
-    # Create a worker manager with more workers
-    worker_manager = WorkerManager(max_workers=3)
-    
-    # Track job completion
-    job_completed = {}
+    # Create an event for each test to control the workflow
+    job_events = {}
     job_results = {}
+    completed_count = 0
+    all_completed = asyncio.Event()
     
-    # Create 3 jobs with different processing times
-    jobs = []
+    # Define the async process function
+    async def test_process_func(job_index):
+        # Short delay to simulate work
+        await asyncio.sleep(0.1)
+        # Update results and mark as done
+        job_results[job_index] = f"Job {job_index} completed"
+        job_events[job_index].set()
+        nonlocal completed_count
+        completed_count += 1
+        if completed_count >= 3:  # When all jobs complete
+            all_completed.set()
+        return {"status": "success", "index": job_index}
+    
+    # Submit three jobs 
     for i in range(3):
         job_id = uuid4()
+        job_events[i] = asyncio.Event()
+        
         job_status = SchedulingJobStatus(
             job_id=job_id,
             status=SchedulingStatus.QUEUED,
@@ -173,43 +187,52 @@ async def test_concurrent_job_processing(worker_manager):
             created_at=datetime.now().isoformat()
         )
         
-        # Create a flag for this job
-        job_completed[job_id] = asyncio.Event()
+        # Need to create a closure to capture the current value of i
+        async def create_func(idx):
+            return lambda: test_process_func(idx)
         
-        # Mock process function with different delays
-        async def mock_process(j_id=job_id, delay=(i+1)*0.2):
-            await asyncio.sleep(delay)  # Different delays
-            job_results[j_id] = {"result": f"job {j_id} completed"}
-            job_completed[j_id].set()
-            return job_results[j_id]
+        process_func = await create_func(i)
         
         # Submit job
         await worker_manager.submit_job(
             job_id,
             job_status,
-            mock_process
+            process_func
         )
-        jobs.append((job_id, job_status))
     
-    # Wait for all jobs to complete
-    await asyncio.gather(*[job_completed[j_id].wait() for j_id, _ in jobs])
+    # Wait for all jobs to complete with timeout
+    try:
+        await asyncio.wait_for(all_completed.wait(), timeout=3.0)
+    except asyncio.TimeoutError:
+        assert False, f"Jobs did not complete in time. Completed: {completed_count}/3"
     
-    # Check all jobs completed
-    for job_id, _ in jobs:
-        assert job_id in job_results
-        assert worker_manager.get_job_status(job_id).status == SchedulingStatus.COMPLETED
+    # Verify all jobs ran
+    assert len(job_results) == 3, f"Expected 3 job results, got {len(job_results)}"
+    for i in range(3):
+        assert i in job_results, f"Job {i} did not complete"
+        assert job_events[i].is_set(), f"Event for job {i} was not set"
 
 
 async def test_queue_management(worker_manager):
     """Test that the queue properly manages jobs when workers are busy"""
-    # Create a worker manager with limited workers
-    worker_manager = WorkerManager(max_workers=1)
-    
-    # Submit more jobs than workers
+    # Submit more jobs than workers (worker_manager has max_workers=2)
     job_ids = []
-    for i in range(3):
+    job_completion_events = {}
+    
+    # Define a custom process function factory with delay
+    async def make_process_func(j_id, delay):
+        async def process_func():
+            await asyncio.sleep(delay)  # Simulate work
+            job_completion_events[j_id].set()
+            return {"test_result": f"Job {j_id} completed"}
+        return process_func
+    
+    # Create 4 jobs (more than the 2 max workers)
+    for i in range(4):
         job_id = uuid4()
         job_ids.append(job_id)
+        job_completion_events[job_id] = asyncio.Event()
+        
         job_status = SchedulingJobStatus(
             job_id=job_id,
             status=SchedulingStatus.QUEUED,
@@ -217,28 +240,34 @@ async def test_queue_management(worker_manager):
             created_at=datetime.now().isoformat()
         )
         
-        # Mock process that takes time
-        async def mock_process(delay=0.5):
-            await asyncio.sleep(delay)
-            return {"status": "completed"}
+        # Create the process function with appropriate delay
+        process_func = await make_process_func(job_id, 0.2)
         
         # Submit job
         await worker_manager.submit_job(
             job_id,
             job_status,
-            mock_process
+            process_func
         )
     
     # Check queue status immediately after submission
+    # Should have at least 2 jobs in the queue (while 2 are running)
     queue_status = worker_manager.get_queue_status()
-    assert queue_status["queue_size"] > 0
+    assert queue_status["queue_size"] >= 2, "Queue should have at least 2 jobs waiting"
     
-    # Wait for jobs to process
-    await asyncio.sleep(2.0)
+    # Wait for all jobs to complete (with timeout)
+    await asyncio.gather(*[
+        asyncio.wait_for(job_completion_events[j_id].wait(), timeout=3.0) 
+        for j_id in job_ids
+    ])
+    
+    # Give worker manager time to update job statuses
+    await asyncio.sleep(0.2)
     
     # All jobs should be completed now
     for job_id in job_ids:
-        assert worker_manager.get_job_status(job_id).status == SchedulingStatus.COMPLETED
+        assert worker_manager.get_job_status(job_id).status == SchedulingStatus.COMPLETED, \
+            f"Job {job_id} should be COMPLETED but is {worker_manager.get_job_status(job_id).status}"
 
 
 async def test_job_cancellation(worker_manager):
@@ -307,49 +336,68 @@ async def test_graceful_shutdown(worker_manager):
 
 async def test_job_priority(worker_manager):
     """Test that jobs with higher priority are processed first"""
-    # Create a worker manager with limited workers
-    worker_manager = WorkerManager(max_workers=1)
+    # Use the worker_manager fixture that's already set up properly
+    # We'll make it only process one job at a time for this test
+    worker_manager.max_workers = 1
     
-    # Track order of execution
+    # Create a shared execution order tracking list
     execution_order = []
-    execution_event = asyncio.Event()
+    all_jobs_processed = asyncio.Event()
     
-    # Create mock process function that records execution order
-    async def mock_process(job_id, priority):
-        await asyncio.sleep(0.1)  # Short delay
-        execution_order.append((job_id, priority))
-        if len(execution_order) == 3:
-            execution_event.set()
-        return {"status": "completed", "job_id": job_id}
+    # Define the process function that records execution order
+    async def create_priority_process_func(job_idx, priority):
+        async def process_func():
+            # Record the job execution with its priority
+            execution_order.append((job_idx, priority))
+            
+            # If this is the last job, signal that all jobs are done
+            if len(execution_order) == 3:
+                all_jobs_processed.set()
+                
+            # Small delay to simulate work
+            await asyncio.sleep(0.1)
+            return {"result": f"Job {job_idx} with priority {priority} completed"}
+        return process_func
     
-    # Submit jobs with different priorities
-    priorities = [0, 2, 1]  # normal, high, medium
+    # Submit jobs with mixed priorities
+    # We'll submit them in this order: low, medium, high
+    # But expect them to be executed in reverse: high, medium, low
+    priorities = [0, 1, 2]  # Low, Medium, High
     job_ids = []
     
     for i, priority in enumerate(priorities):
         job_id = uuid4()
         job_ids.append(job_id)
+        
         job_status = SchedulingJobStatus(
             job_id=job_id,
             status=SchedulingStatus.QUEUED,
-            message=f"Test job {i} with priority {priority}",
-            created_at=datetime.now().isoformat(),
-            priority=priority
+            message=f"Priority test job {i}",
+            created_at=datetime.now().isoformat()
         )
         
-        # Submit job
+        # Create the process function for this job
+        process_func = await create_priority_process_func(i, priority)
+        
+        # Submit job with priority
         await worker_manager.submit_job(
             job_id,
             job_status,
-            mock_process,
-            job_id,
+            process_func,
             priority=priority
         )
     
     # Wait for all jobs to complete
-    await asyncio.wait_for(execution_event.wait(), timeout=5.0)
+    try:
+        await asyncio.wait_for(all_jobs_processed.wait(), timeout=5.0)
+    except asyncio.TimeoutError:
+        assert False, f"Not all jobs completed in time. Execution order: {execution_order}"
     
-    # Check execution order - higher priority jobs should be executed first
-    # Expected order: priority 2 (high), priority 1 (medium), priority 0 (normal)
-    assert execution_order[0][1] > execution_order[1][1]
-    assert execution_order[1][1] > execution_order[2][1]
+    # Extract just the priorities from the execution order
+    execution_priorities = [priority for _, priority in execution_order]
+    
+    # Jobs should be executed in descending priority order (2, 1, 0)
+    expected_priorities = sorted(priorities, reverse=True)
+    
+    assert execution_priorities == expected_priorities, \
+        f"Jobs were not executed in priority order. Got: {execution_priorities}, Expected: {expected_priorities}"

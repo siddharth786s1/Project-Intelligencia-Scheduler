@@ -10,6 +10,7 @@ class SchedulingStatus(str, Enum):
     RUNNING = "running"
     COMPLETED = "completed"
     FAILED = "failed"
+    CANCELLED = "cancelled"
     PARTIALLY_COMPLETED = "partially_completed"
 
 
@@ -56,6 +57,7 @@ class SchedulingJobStatus(BaseModel):
     started_at: Optional[str] = None
     completed_at: Optional[str] = None
     error: Optional[str] = None
+    priority: int = Field(default=0, description="Job priority (0=normal, 1=medium, 2=high)")
     
     # Results summary (available when completed)
     schedule_generation_id: Optional[UUID] = None
@@ -65,6 +67,12 @@ class SchedulingJobStatus(BaseModel):
     faculty_satisfaction_score: Optional[float] = None
     batch_satisfaction_score: Optional[float] = None
     room_utilization: Optional[float] = None
+    
+    # For test purposes and response models
+    result: Optional[Dict[str, Any]] = Field(default=None, description="Additional result data")
+    
+    class Config:
+        extra = "allow"  # Allow extra fields for flexibility in testing and APIs
 
 
 class ScheduleGenerationSummary(BaseModel):

@@ -504,99 +504,126 @@ class GeneticSchedulingAlgorithm(BaseSchedulingAlgorithm):
         Returns:
             Repaired solution
         """
-        # Track assignments to detect conflicts
-        faculty_conflicts = {}  # (faculty_id, time_slot_id) -> [indices]
-        classroom_conflicts = {}  # (classroom_id, time_slot_id) -> [indices]
-        batch_conflicts = {}  # (batch_id, time_slot_id) -> [indices]
+        # Make a deep copy of the solution to work with
+        repaired_solution = [session.copy() for session in solution]
         
-        # Find all conflicts
-        for i, session in enumerate(solution):
-            batch_id = session["batch_id"]
-            time_slot_id = session["time_slot_id"]
-            faculty_id = session["faculty_id"]
-            classroom_id = session["classroom_id"]
-            
-            faculty_key = (faculty_id, time_slot_id)
-            classroom_key = (classroom_id, time_slot_id)
-            batch_key = (batch_id, time_slot_id)
-            
-            if faculty_key not in faculty_conflicts:
-                faculty_conflicts[faculty_key] = []
-            faculty_conflicts[faculty_key].append(i)
-            
-            if classroom_key not in classroom_conflicts:
-                classroom_conflicts[classroom_key] = []
-            classroom_conflicts[classroom_key].append(i)
-            
-            if batch_key not in batch_conflicts:
-                batch_conflicts[batch_key] = []
-            batch_conflicts[batch_key].append(i)
+        # We'll implement a multi-pass repair approach
+        # 1. First pass: Identify and mark all conflicts
+        # 2. Second pass: Resolve conflicts one by one
         
-        # Resolve conflicts by changing time slots for some sessions
-        repaired_solution = solution.copy()
+        # Keep repeating until we have no conflicts or reach max iterations
+        max_repair_iterations = 10
+        iteration = 0
         
-        # Helper function to find a non-conflicting time slot
-        def find_non_conflicting_time_slot(session_index, current_solution):
-            session = current_solution[session_index]
-            batch_id = session["batch_id"]
-            faculty_id = session["faculty_id"]
-            classroom_id = session["classroom_id"]
+        while iteration < max_repair_iterations:
+            # Track assignments to detect conflicts
+            faculty_timeslots = {}  # (faculty_id, time_slot_id) -> index
+            classroom_timeslots = {}  # (classroom_id, time_slot_id) -> index
+            batch_timeslots = {}  # (batch_id, time_slot_id) -> index
             
-            # Try each time slot
-            for time_slot in self.time_slots:
-                time_slot_id = time_slot["id"]
+            # Find conflicts
+            conflicts_found = False
+            
+            # First pass: Find conflicts
+            for i, session in enumerate(repaired_solution):
+                batch_id = session["batch_id"]
+                time_slot_id = session["time_slot_id"]
+                faculty_id = session["faculty_id"]
+                classroom_id = session["classroom_id"]
                 
-                # Check if this time slot would cause conflicts
-                faculty_key = (faculty_id, time_slot_id)
-                classroom_key = (classroom_id, time_slot_id)
-                batch_key = (batch_id, time_slot_id)
+                # Check faculty conflicts (same faculty in same time slot)
+                faculty_key = (str(faculty_id), str(time_slot_id))
+                if faculty_key in faculty_timeslots:
+                    conflicts_found = True
+                    # Resolve by changing time slot for this session
+                    new_time_slot = self._find_alternative_time_slot(repaired_solution, i)
+                    repaired_solution[i]["time_slot_id"] = new_time_slot
+                else:
+                    faculty_timeslots[faculty_key] = i
                 
-                faculty_conflict = faculty_key in faculty_conflicts and len(faculty_conflicts[faculty_key]) > 0
-                classroom_conflict = classroom_key in classroom_conflicts and len(classroom_conflicts[classroom_key]) > 0
-                batch_conflict = batch_key in batch_conflicts and len(batch_conflicts[batch_key]) > 0
+                # Check classroom conflicts (same classroom in same time slot)
+                classroom_key = (str(classroom_id), str(time_slot_id))
+                if classroom_key in classroom_timeslots:
+                    conflicts_found = True
+                    # Resolve by finding another suitable classroom
+                    new_classroom = self._find_alternative_classroom(repaired_solution[i]["subject_id"])
+                    if new_classroom:
+                        repaired_solution[i]["classroom_id"] = new_classroom
+                    else:
+                        # If no alternative classroom, change time slot
+                        new_time_slot = self._find_alternative_time_slot(repaired_solution, i)
+                        repaired_solution[i]["time_slot_id"] = new_time_slot
+                else:
+                    classroom_timeslots[classroom_key] = i
                 
-                if not (faculty_conflict or classroom_conflict or batch_conflict):
-                    return time_slot_id
+                # Check batch conflicts (same batch in same time slot)
+                batch_key = (str(batch_id), str(time_slot_id))
+                if batch_key in batch_timeslots:
+                    conflicts_found = True
+                    # Resolve by changing time slot for this session
+                    new_time_slot = self._find_alternative_time_slot(repaired_solution, i)
+                    repaired_solution[i]["time_slot_id"] = new_time_slot
+                else:
+                    batch_timeslots[batch_key] = i
             
-            # If no non-conflicting time slot found, return a random one
-            return random.choice([ts["id"] for ts in self.time_slots])
+            # If no conflicts were found in this iteration, we're done
+            if not conflicts_found:
+                break
+                
+            iteration += 1
         
-        # Resolve faculty conflicts
-        for key, indices in faculty_conflicts.items():
-            if len(indices) > 1:
-                # Keep one session at this time slot, move others
-                keep_index = random.choice(indices)
-                for move_index in indices:
-                    if move_index != keep_index:
-                        new_time_slot = find_non_conflicting_time_slot(move_index, repaired_solution)
-                        repaired_solution[move_index]["time_slot_id"] = new_time_slot
+        return repaired_solution
+    
+    def _find_alternative_time_slot(self, solution, session_index):
+        """Find an alternative time slot that causes minimal conflicts"""
+        # Get all available time slot IDs
+        all_time_slots = [ts["id"] for ts in self.time_slots]
         
-        # Resolve classroom conflicts
-        for key, indices in classroom_conflicts.items():
-            if len(indices) > 1:
-                # Keep one session at this classroom, move others
-                keep_index = random.choice(indices)
-                for move_index in indices:
-                    if move_index != keep_index:
-                        # Find another suitable classroom
-                        subject_id = repaired_solution[move_index]["subject_id"]
-                        suitable_classrooms = [
-                            classroom["id"] for classroom in self.classrooms
-                            if self._is_classroom_suitable(classroom["id"], subject_id)
-                        ]
-                        
-                        if suitable_classrooms:
-                            repaired_solution[move_index]["classroom_id"] = random.choice(suitable_classrooms)
+        # If there's only one time slot, we can't find an alternative
+        if len(all_time_slots) <= 1:
+            return all_time_slots[0]
+            
+        # Get current session details
+        session = solution[session_index]
+        faculty_id = session["faculty_id"]
+        batch_id = session["batch_id"]
+        current_time_slot = session["time_slot_id"]
         
-        # Resolve batch conflicts
-        for key, indices in batch_conflicts.items():
-            if len(indices) > 1:
-                # Keep one session at this time slot, move others
-                keep_index = random.choice(indices)
-                for move_index in indices:
-                    if move_index != keep_index:
-                        new_time_slot = find_non_conflicting_time_slot(move_index, repaired_solution)
-                        repaired_solution[move_index]["time_slot_id"] = new_time_slot
+        # Identify which time slots are already used by this faculty or batch
+        used_time_slots = set()
+        for i, other_session in enumerate(solution):
+            if i != session_index:  # Skip the current session
+                if other_session["faculty_id"] == faculty_id:
+                    # This faculty is already teaching in this time slot
+                    used_time_slots.add(other_session["time_slot_id"])
+                if other_session["batch_id"] == batch_id:
+                    # This batch already has a class in this time slot
+                    used_time_slots.add(other_session["time_slot_id"])
+        
+        # Find time slots that aren't already used
+        available_slots = [ts for ts in all_time_slots if ts != current_time_slot and ts not in used_time_slots]
+        
+        # If there are alternatives, pick one at random
+        if available_slots:
+            return random.choice(available_slots)
+        elif len(all_time_slots) > 1:
+            # If all slots are used but we have more than one slot, pick any different slot
+            alternative_slots = [ts for ts in all_time_slots if ts != current_time_slot]
+            return random.choice(alternative_slots)
+        else:
+            # As a last resort, keep the current one
+            return current_time_slot
+    
+    def _find_alternative_classroom(self, subject_id):
+        """Find an alternative suitable classroom for the subject"""
+        suitable_classrooms = [
+            classroom["id"] for classroom in self.classrooms
+            if self._is_classroom_suitable(classroom["id"], subject_id)
+        ]
+        
+        if suitable_classrooms:
+            return random.choice(suitable_classrooms)
+        return None  # No alternative found
         
         return repaired_solution
     
