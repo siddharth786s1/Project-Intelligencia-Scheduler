@@ -130,26 +130,98 @@ class SchedulerService:
         """
         Fetch all necessary data from the data service
         """
-        # This is a placeholder - in a real implementation, we would fetch:
-        # - Faculty and their preferences
-        # - Batches and subjects
-        # - Classrooms
-        # - Time slots
-        # - Scheduling constraints
-        
         try:
-            async with httpx.AsyncClient(base_url=self.data_service_url) as client:
-                # Placeholder for fetching data - to be implemented
-                pass
+            async with httpx.AsyncClient(base_url=self.data_service_url, timeout=30.0) as client:
+                # Fetch faculty data
+                faculty_response = await client.get(
+                    "/api/v1/faculty", 
+                    headers=auth_headers,
+                    params={"limit": 1000}
+                )
+                faculty_response.raise_for_status()
+                faculty_data = faculty_response.json()["data"]
+                
+                # Fetch faculty preferences for each faculty
+                for faculty in faculty_data:
+                    try:
+                        pref_response = await client.get(
+                            f"/api/v1/faculty-preferences/{faculty['id']}/all-preferences",
+                            headers=auth_headers
+                        )
+                        pref_response.raise_for_status()
+                        faculty["preferences"] = pref_response.json()["data"]
+                    except httpx.HTTPError as e:
+                        logger.warning(f"Error fetching preferences for faculty {faculty['id']}: {str(e)}")
+                        faculty["preferences"] = {
+                            "availability": [],
+                            "subject_expertise": [],
+                            "batch_preferences": [],
+                            "classroom_preferences": []
+                        }
+                
+                # Fetch batches
+                batches_response = await client.get(
+                    "/api/v1/batches",
+                    headers=auth_headers,
+                    params={"limit": 1000}
+                )
+                batches_response.raise_for_status()
+                batches_data = batches_response.json()["data"]
+                
+                # Fetch subjects
+                subjects_response = await client.get(
+                    "/api/v1/subjects",
+                    headers=auth_headers,
+                    params={"limit": 1000}
+                )
+                subjects_response.raise_for_status()
+                subjects_data = subjects_response.json()["data"]
+                
+                # Fetch classrooms
+                classrooms_response = await client.get(
+                    "/api/v1/classrooms",
+                    headers=auth_headers,
+                    params={"limit": 1000}
+                )
+                classrooms_response.raise_for_status()
+                classrooms_data = classrooms_response.json()["data"]
+                
+                # Fetch time slots
+                time_slots_response = await client.get(
+                    "/api/v1/time-slots",
+                    headers=auth_headers,
+                    params={"limit": 1000}
+                )
+                time_slots_response.raise_for_status()
+                time_slots_data = time_slots_response.json()["data"]
+                
+                # Fetch scheduling constraints
+                constraints_response = await client.get(
+                    "/api/v1/scheduling-constraints",
+                    headers=auth_headers,
+                    params={"limit": 1000}
+                )
+                constraints_response.raise_for_status()
+                constraints_data = constraints_response.json()["data"]
+                
+                # Fetch batch-subject assignments
+                batch_subjects_response = await client.get(
+                    "/api/v1/batch-subjects",
+                    headers=auth_headers,
+                    params={"limit": 1000}
+                )
+                batch_subjects_data = []
+                if batch_subjects_response.status_code == 200:
+                    batch_subjects_data = batch_subjects_response.json()["data"]
             
-            # Return placeholder data
             return {
-                "faculty": [],
-                "batches": [],
-                "subjects": [],
-                "classrooms": [],
-                "time_slots": [],
-                "constraints": []
+                "faculty": faculty_data,
+                "batches": batches_data,
+                "subjects": subjects_data,
+                "classrooms": classrooms_data,
+                "time_slots": time_slots_data,
+                "constraints": constraints_data,
+                "batch_subjects": batch_subjects_data
             }
         except httpx.HTTPError as e:
             raise DataServiceException(f"Error fetching data from data service: {str(e)}")
