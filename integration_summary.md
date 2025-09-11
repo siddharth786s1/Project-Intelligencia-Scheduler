@@ -29,6 +29,12 @@ This PR adds tools and documentation for testing the integration between the fro
    - Analysis of integration points
    - Recommendations for improvements
 
+6. **ApprovalWorkflow Integration (`frontend/src/docs/approval-workflow-integration.md`)**
+   - Documentation of the ApprovalWorkflow component integration
+   - Details on permission-based status transitions
+   - UI/UX considerations for the approval process
+   - Testing guidelines for workflow validation
+
 ## Key Integration Points
 
 The integration between the frontend and scheduler service involves:
@@ -37,15 +43,18 @@ The integration between the frontend and scheduler service involves:
    - Job submission from TimetableGenerator component
    - Job status polling
    - Timetable retrieval for viewing
+   - Timetable status management via ApprovalWorkflow
 
 2. **Authentication Handling**:
    - Token forwarding between services
    - Permission validation
+   - Role-based access control for timetable approval workflow
 
 3. **Data Flow**:
    - Schedule generation parameters from UI to API
    - Generated timetable data from API to UI
    - Error messages and status updates
+   - Timetable status transitions and approval workflow data
 
 ## Testing Approach
 
@@ -66,11 +75,13 @@ The testing approach focuses on:
 ## How to Use
 
 1. **Setup Test Environment**:
+
    ```bash
    ./setup_integration_test.sh
    ```
 
 2. **Start Components for Testing**:
+
    ```bash
    ./start_integration_test.sh
    ```
@@ -86,4 +97,9 @@ The testing approach focuses on:
 1. Fix any issues found during testing
 2. Consider implementing the improvements suggested in the analysis document
 3. Complete the remaining frontend components
-4. Prepare for production deployment
+4. Enhance ApprovalWorkflow with notification system
+   - Email notifications for status changes
+   - In-app notifications for stakeholders
+5. Implement role-based permission testing for ApprovalWorkflow
+6. Add comprehensive unit tests for all integrated components
+7. Prepare for production deployment
