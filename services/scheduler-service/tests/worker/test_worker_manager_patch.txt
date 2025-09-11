@@ -1,0 +1,1 @@
+Patch failed due to context mismatch. Manual intervention required. The mock_process coroutine in test_queue_management should be defined outside the for loop. The assertion in test_job_priority should check for descending priority order. See lines 180-240 and 301-347 for reference.
