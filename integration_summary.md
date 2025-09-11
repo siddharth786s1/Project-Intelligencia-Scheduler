@@ -36,6 +36,11 @@ This PR adds tools and documentation for testing the integration between the fro
    - Testing guidelines for workflow validation (`frontend/src/docs/approval-workflow-testing.md`)
    - Unit tests for the ApprovalWorkflow component (`frontend/src/__tests__/ApprovalWorkflow.test.tsx`)
 
+7. **Scheduler Monitoring System**
+   - SchedulerMonitor component implementation (`frontend/src/components/SchedulerMonitor.tsx`)
+   - Dashboard integration with real-time monitoring (`frontend/src/pages/Dashboard.tsx`)
+   - Documentation of the monitoring system (`docs/scheduler-monitoring.md`)
+
 ## Key Integration Points
 
 The integration between the frontend and scheduler service involves:
@@ -45,6 +50,7 @@ The integration between the frontend and scheduler service involves:
    - Job status polling
    - Timetable retrieval for viewing
    - Timetable status management via ApprovalWorkflow
+   - Scheduler system monitoring and metrics collection
 
 2. **Authentication Handling**:
    - Token forwarding between services
@@ -56,6 +62,7 @@ The integration between the frontend and scheduler service involves:
    - Generated timetable data from API to UI
    - Error messages and status updates
    - Timetable status transitions and approval workflow data
+   - Scheduler job status and system metrics
 
 ## Testing Approach
 
@@ -72,6 +79,11 @@ The testing approach focuses on:
 3. **Error Handling**:
    - Test edge cases and error conditions
    - Ensure graceful degradation
+
+4. **Performance Monitoring**:
+   - Test scheduler monitoring system
+   - Verify metrics collection and display
+   - Validate system status indicators
 
 ## How to Use
 
@@ -93,6 +105,61 @@ The testing approach focuses on:
 4. **Analyze Results**:
    Document any issues found during testing and prioritize fixes based on severity.
 
+## Recent Updates
+
+### Scheduler Monitoring System Integration
+
+We have implemented a comprehensive monitoring system for the scheduler service, consisting of:
+
+1. **SchedulerMonitor Component** (`frontend/src/components/SchedulerMonitor.tsx`)
+   - Real-time display of scheduler system status
+   - Queue metrics visualization (active jobs, queue size, worker count)
+   - System load indicators with color-coded status
+   - Active job cards with progress tracking
+   - Auto-refresh functionality for live updates
+
+2. **Dashboard Integration** (`frontend/src/pages/Dashboard.tsx`)
+   - Enhanced Dashboard with scheduler monitoring integration
+   - Display of recent schedule generations
+   - System-wide statistics presentation
+   - Responsive layout using modern Material UI v7 patterns
+
+3. **Documentation** (`docs/scheduler-monitoring.md`)
+   - Detailed explanation of the monitoring system
+   - Component structure and responsibilities
+   - API integration points
+   - Status states and monitoring capabilities
+   - Future enhancement possibilities
+
+### Benefits of the Monitoring System
+
+1. **Operational Visibility**
+   - Administrators can see the current state of the scheduler system at a glance
+   - Real-time tracking of job progress and system load
+
+2. **Resource Management**
+   - Early identification of system bottlenecks
+   - Worker utilization visibility
+
+3. **Job Management**
+   - Tracking of individual job status and progress
+   - Ability to cancel in-progress jobs when needed
+
+4. **User Experience**
+   - Clear feedback on submitted job status
+   - Transparency in the scheduling process
+
+### Technical Implementation
+
+The monitoring system uses a combination of:
+- React state management for UI updates
+- Polling mechanism for real-time data
+- Color-coded visual indicators for status representation
+- Responsive grid layouts for various screen sizes
+- Integration with the SchedulerService API
+
+This integration significantly improves the operational capabilities of the system by providing administrators with the tools they need to monitor and manage the scheduling process effectively.
+
 ## Next Steps
 
 1. Fix any issues found during testing
@@ -103,5 +170,6 @@ The testing approach focuses on:
    - In-app notifications for stakeholders
 5. Implement role-based permission testing for ApprovalWorkflow
 6. ✅ Add unit tests for ApprovalWorkflow component
-7. Add comprehensive unit tests for other integrated components
-8. Prepare for production deployment
+7. ✅ Implement scheduler monitoring system
+8. Add comprehensive unit tests for other integrated components
+9. Prepare for production deployment

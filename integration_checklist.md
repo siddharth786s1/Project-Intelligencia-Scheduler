@@ -57,9 +57,13 @@
 
 ## Dashboard Integration Tests
 
-- [ ] Dashboard shows recent timetables
-- [ ] Dashboard shows queue status
-- [ ] Statistics are displayed correctly
+- [x] Dashboard shows recent schedule generations
+- [x] Dashboard displays scheduler monitoring system
+- [x] SchedulerMonitor component shows queue status and metrics
+- [x] Active jobs are displayed with progress indicators
+- [x] System status indicators (normal/busy/overloaded) work correctly
+- [x] Manual refresh functionality works
+- [x] Statistics are displayed correctly
 
 ## Error Handling Tests
 
