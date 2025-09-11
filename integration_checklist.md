@@ -49,10 +49,11 @@
 - [x] Timetable data is displayed in the correct format
 - [x] Time slot and session information is accurate
 - [x] ApprovalWorkflow component is integrated
-- [ ] Timetable status changes reflect in UI
-- [ ] Status change permissions work correctly
-- [ ] Approval dialog shows correctly
+- [x] Timetable status changes reflect in UI
+- [x] Status change permissions work correctly
+- [x] Approval dialog shows correctly
 - [x] Status transitions are saved to the database
+- [x] ApprovalWorkflow component has unit tests
 
 ## Dashboard Integration Tests
 

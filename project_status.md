@@ -56,8 +56,9 @@
 ✅ Timetable viewer with filtering capabilities
 ✅ Approval workflow component implementation
 ✅ Integration of ApprovalWorkflow in TimetableViewer
-⏳ Responsive design optimization (in progress)
-⏳ Testing (in progress)
+✅ Responsive design implementation for mobile devices
+✅ Unit tests for ApprovalWorkflow component
+⏳ Testing (additional components)
 
 ## Phase 3: Composition and Finalization
 
@@ -85,8 +86,9 @@
    - ✅ Implement timetable generator UI
    - ✅ Create timetable viewer with filters
    - ✅ Implement approval workflow
-   - Finalize responsive design for mobile devices
-   - Complete component unit tests
+   - ✅ Implement responsive design for mobile devices
+   - ✅ Create ApprovalWorkflow unit tests
+   - Complete additional component unit tests
    - Add end-to-end integration tests
 
 4. Final Testing and Integration:

@@ -29,11 +29,12 @@ This PR adds tools and documentation for testing the integration between the fro
    - Analysis of integration points
    - Recommendations for improvements
 
-6. **ApprovalWorkflow Integration (`frontend/src/docs/approval-workflow-integration.md`)**
-   - Documentation of the ApprovalWorkflow component integration
+6. **ApprovalWorkflow Integration**
+   - Documentation of the ApprovalWorkflow component integration (`frontend/src/docs/approval-workflow-integration.md`)
    - Details on permission-based status transitions
    - UI/UX considerations for the approval process
-   - Testing guidelines for workflow validation
+   - Testing guidelines for workflow validation (`frontend/src/docs/approval-workflow-testing.md`)
+   - Unit tests for the ApprovalWorkflow component (`frontend/src/__tests__/ApprovalWorkflow.test.tsx`)
 
 ## Key Integration Points
 
@@ -101,5 +102,6 @@ The testing approach focuses on:
    - Email notifications for status changes
    - In-app notifications for stakeholders
 5. Implement role-based permission testing for ApprovalWorkflow
-6. Add comprehensive unit tests for all integrated components
-7. Prepare for production deployment
+6. ✅ Add unit tests for ApprovalWorkflow component
+7. Add comprehensive unit tests for other integrated components
+8. Prepare for production deployment
