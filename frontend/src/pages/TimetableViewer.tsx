@@ -11,6 +11,7 @@ import {
   InputLabel,
   Select,
   MenuItem,
+  SelectChangeEvent,
   Table,
   TableBody,
   TableCell,
@@ -22,20 +23,25 @@ import {
   Chip,
   CircularProgress,
   Button,
-  IconButton,
-  Tooltip,
   Divider,
   TextField,
-  InputAdornment
+  InputAdornment,
+  useMediaQuery,
+  useTheme,
+  Accordion,
+  AccordionSummary,
+  AccordionDetails
 } from '@mui/material';
-import FilterListIcon from '@mui/icons-material/FilterList';
+import type { SelectChangeEvent } from '@mui/material';
 import FileDownloadIcon from '@mui/icons-material/FileDownload';
 import SearchIcon from '@mui/icons-material/Search';
 import PrintIcon from '@mui/icons-material/Print';
 import ShareIcon from '@mui/icons-material/Share';
-import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import { useDataService } from '../services/dataService';
 import { useSearchParams } from 'react-router-dom';
+import ApprovalWorkflow from '../components/ApprovalWorkflow';
+import MobileTimetableView from '../components/MobileTimetableView';
 
 import type { Timetable } from '../types/timetable';
 import type { ScheduledSession } from '../types/scheduledSession';
@@ -203,20 +209,22 @@ const TimetableViewer = () => {
     setSelectedView(newValue);
   };
   
-  const handleBatchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleBatchChange = (event: SelectChangeEvent) => {
     setSelectedBatch(event.target.value);
   };
   
-  const handleFacultyChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFacultyChange = (event: SelectChangeEvent) => {
     setSelectedFaculty(event.target.value);
   };
   
-  const handleClassroomChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleClassroomChange = (event: SelectChangeEvent) => {
     setSelectedClassroom(event.target.value);
   };
   
-  const handleDayChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    setSelectedDay(event.target.value as unknown as number | 'all');
+  const handleDayChange = (event: SelectChangeEvent) => {
+    // Convert the string value to number or keep 'all' as string
+    const value = event.target.value === 'all' ? 'all' : Number(event.target.value);
+    setSelectedDay(value);
   };
   
   const handleSearchChange = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -333,6 +341,12 @@ const TimetableViewer = () => {
   const organizedSessions = getOrganizedSessions();
   const uniqueTimeSlots = getUniqueTimeSlots();
   const filteredDays = selectedDay === 'all' ? daysOfWeek : [daysOfWeek[selectedDay as number]];
+  const filteredSessions = getFilteredSessions();
+  
+  // Responsive helpers
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+  const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   
   if (loading) {
     return (
@@ -343,40 +357,39 @@ const TimetableViewer = () => {
   }
   
   return (
-    <Container sx={{ mb: 4 }}>
+    <Container sx={{ mb: 4, px: { xs: 1, sm: 2, md: 3 } }}>
       <Box sx={{ mb: 3, mt: 2 }}>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-          <Typography variant="h4" component="h1">
+        <Box sx={{ 
+          display: 'flex', 
+          flexDirection: { xs: 'column', md: 'row' },
+          justifyContent: 'space-between', 
+          alignItems: { xs: 'flex-start', md: 'center' }, 
+          mb: 2 
+        }}>
+          <Typography variant="h4" component="h1" sx={{ mb: { xs: 2, md: 0 } }}>
             Timetable Viewer
           </Typography>
-          <Box>
+          <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
             <Button 
               variant="outlined" 
               startIcon={<FileDownloadIcon />}
-              sx={{ mr: 1 }}
+              size={isMobile ? "small" : "medium"}
             >
               Export
             </Button>
             <Button 
               variant="outlined"
               startIcon={<PrintIcon />}
-              sx={{ mr: 1 }}
+              size={isMobile ? "small" : "medium"}
             >
               Print
             </Button>
             <Button 
               variant="outlined"
               startIcon={<ShareIcon />}
-              sx={{ mr: 1 }}
+              size={isMobile ? "small" : "medium"}
             >
               Share
-            </Button>
-            <Button 
-              variant="contained"
-              color="primary"
-              startIcon={<AssignmentTurnedInIcon />}
-            >
-              {timetableData?.status === 'draft' ? 'Approve' : 'Publish'} Timetable
             </Button>
           </Box>
         </Box>
@@ -384,25 +397,35 @@ const TimetableViewer = () => {
         {timetableData && (
           <Card variant="outlined">
             <CardContent>
-              <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' } }}>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: { xs: 'column', md: 'row' },
+                gap: { xs: 2, md: 0 }
+              }}>
                 <Box sx={{ flex: 2 }}>
                   <Typography variant="h5" gutterBottom>{timetableData.name}</Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Generated on: {new Date(timetableData.generated_at).toLocaleString()}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    Algorithm: {timetableData.generation_algorithm}
-                  </Typography>
+                  <Box sx={{ 
+                    display: 'flex', 
+                    flexDirection: { xs: 'column', sm: 'row' },
+                    gap: { xs: 0, sm: 2 }
+                  }}>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: { xs: 1, sm: 0 } }}>
+                      Generated on: {new Date(timetableData.generated_at).toLocaleString()}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      Algorithm: {timetableData.generation_algorithm}
+                    </Typography>
+                  </Box>
                 </Box>
-                <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end', alignItems: 'center' }}>
-                  <Chip 
-                    label={timetableData.status.toUpperCase()}
-                    color={
-                      timetableData.status === 'published' ? 'success' : 
-                      timetableData.status === 'approved' ? 'primary' : 
-                      'default'
-                    }
-                    sx={{ fontWeight: 'bold' }}
+                <Box sx={{ 
+                  flex: 1, 
+                  display: 'flex', 
+                  justifyContent: { xs: 'flex-start', md: 'flex-end' }, 
+                  alignItems: 'center' 
+                }}>
+                  <ApprovalWorkflow 
+                    timetable={timetableData}
+                    onStatusChange={fetchTimetableData}
                   />
                 </Box>
               </Box>
@@ -531,65 +554,124 @@ const TimetableViewer = () => {
         </Paper>
       )}
       
-      <TableContainer component={Paper}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell width="12%">Time</TableCell>
-              {filteredDays.map((day) => (
-                <TableCell key={day} align="center">{day}</TableCell>
-              ))}
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {uniqueTimeSlots.length > 0 ? (
-              uniqueTimeSlots.map((timeSlot) => (
-                <TableRow key={timeSlot}>
-                  <TableCell>{timeSlot}</TableCell>
-                  {filteredDays.map((day) => {
-                    const session = organizedSessions[day]?.[timeSlot];
-                    return (
-                      <TableCell key={day} align="center">
-                        {session ? (
-                          <Card variant="outlined" sx={{ p: 1, backgroundColor: 'background.default' }}>
-                            <Typography variant="subtitle2">
-                              {session.subject_name}
-                            </Typography>
-                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
-                              <Typography variant="caption" color="text.secondary">
-                                {session.subject_code}
-                              </Typography>
-                              <Chip
-                                label={session.session_type}
-                                size="small"
-                                color={getSessionChipColor(session.session_type)}
-                              />
-                            </Box>
-                            <Divider sx={{ my: 1 }} />
-                            <Typography variant="body2">
-                              {selectedView !== 'faculty' && session.faculty_name}
-                              {selectedView !== 'batch' && selectedView !== 'faculty' && <br />}
-                              {selectedView !== 'batch' && session.batch_name}
-                              {selectedView !== 'classroom' && selectedView !== 'batch' && <br />}
-                              {selectedView !== 'classroom' && session.classroom_name}
-                            </Typography>
-                          </Card>
-                        ) : null}
-                      </TableCell>
-                    );
-                  })}
-                </TableRow>
-              ))
-            ) : (
+      {/* Responsive Timetable Display */}
+      {isMobile ? (
+        // Mobile card view
+        <MobileTimetableView 
+          sessions={filteredSessions}
+          selectedDay={selectedDay}
+          daysOfWeek={daysOfWeek}
+          formatTime={formatTime}
+          getSessionChipColor={getSessionChipColor}
+          selectedView={selectedView}
+        />
+      ) : (
+        // Desktop/Tablet table view
+        <TableContainer 
+          component={Paper} 
+          sx={{ 
+            overflowX: 'auto',
+            '& .MuiTable-root': {
+              minWidth: isTablet ? 650 : 800
+            }
+          }}
+        >
+          <Table size={isTablet ? "small" : "medium"}>
+            <TableHead>
               <TableRow>
-                <TableCell colSpan={filteredDays.length + 1} align="center">
-                  No scheduled sessions found matching your filters.
+                <TableCell 
+                  width="12%" 
+                  sx={{ 
+                    fontWeight: 'bold', 
+                    backgroundColor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100'
+                  }}
+                >
+                  Time
                 </TableCell>
+                {filteredDays.map((day) => (
+                  <TableCell 
+                    key={day} 
+                    align="center"
+                    sx={{ 
+                      fontWeight: 'bold',
+                      backgroundColor: theme.palette.mode === 'dark' ? 'grey.800' : 'grey.100'
+                    }}
+                  >
+                    {day}
+                  </TableCell>
+                ))}
               </TableRow>
-            )}
-          </TableBody>
-        </Table>
-      </TableContainer>
+            </TableHead>
+            <TableBody>
+              {uniqueTimeSlots.length > 0 ? (
+                uniqueTimeSlots.map((timeSlot) => (
+                  <TableRow key={timeSlot} hover>
+                    <TableCell sx={{ whiteSpace: 'nowrap', fontWeight: 'medium' }}>
+                      {timeSlot}
+                    </TableCell>
+                    {filteredDays.map((day) => {
+                      const session = organizedSessions[day]?.[timeSlot];
+                      return (
+                        <TableCell 
+                          key={day} 
+                          align="center" 
+                          sx={{ 
+                            minWidth: '180px',
+                            p: isTablet ? 1 : 2
+                          }}
+                        >
+                          {session ? (
+                            <Card 
+                              variant="outlined" 
+                              sx={{ 
+                                p: { xs: 1, md: 1.5 }, 
+                                backgroundColor: 'background.default',
+                                transition: 'transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out',
+                                '&:hover': {
+                                  transform: 'translateY(-2px)',
+                                  boxShadow: 2
+                                }
+                              }}
+                            >
+                              <Typography variant="subtitle2" noWrap title={session.subject_name}>
+                                {session.subject_name}
+                              </Typography>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 1 }}>
+                                <Typography variant="caption" color="text.secondary">
+                                  {session.subject_code}
+                                </Typography>
+                                <Chip
+                                  label={session.session_type}
+                                  size="small"
+                                  color={getSessionChipColor(session.session_type)}
+                                />
+                              </Box>
+                              <Divider sx={{ my: 1 }} />
+                              <Typography variant="body2" sx={{ fontSize: isTablet ? '0.75rem' : '0.875rem' }}>
+                                {selectedView !== 'faculty' && session.faculty_name}
+                                {selectedView !== 'batch' && selectedView !== 'faculty' && <br />}
+                                {selectedView !== 'batch' && session.batch_name}
+                                {selectedView !== 'classroom' && selectedView !== 'batch' && <br />}
+                                {selectedView !== 'classroom' && session.classroom_name}
+                              </Typography>
+                            </Card>
+                          ) : null}
+                        </TableCell>
+                      );
+                    })}
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={filteredDays.length + 1} align="center">
+                    No scheduled sessions found matching your filters.
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
+      )}
     </Container>
   );
 };
